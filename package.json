@@ -1,0 +1,23 @@
+{
+  "name": "svg-parser",
+  "version": "1.0.0",
+  "description": "Parses SVG files into React DOM elements",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tnorlund/SVG-parser.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tnorlund/SVG-parser/issues"
+  },
+  "homepage": "https://github.com/tnorlund/SVG-parser#readme",
+  "dependencies": {
+    "fs": "0.0.1-security",
+    "xml2js": "^0.4.23"
+  }
+}
