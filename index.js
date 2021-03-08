@@ -3,7 +3,7 @@
 const fs = require('fs')
 var parseString = require('xml2js').parseString
 
-const file_name = `/Users/tnorlund/identity-01.svg`
+const file_name = `/Users/tnorlund/CloudFrontAnalytics-01.svg`
 const style_re = /([\.a-z\-0-9,]+)\{([a-z0-9\.;:\-\(\)#]+)\}/gm
 const style_exp = new RegExp( style_re )
 
@@ -105,13 +105,52 @@ const parsePaths = ( classes, g, react_components ) => {
   return react_components
 }
 
+const indent = ( indent_number ) => `  `.repeat( indent_number )
+
+const writeComponents = ( components, indent_number ) => {
+  let comp = ``
+  let component
+  indent_number += 1
+  components.forEach( group => {
+    // console.log( {group} )
+    comp += `<g `
+    /**
+     * Add the clip path if there is one for this group.
+     */
+    if ( `clip-path` in group )
+      comp += `clipPath={\`${ group['clip-path'] }\`} >\n`
+    if (group.circle.length > 0)
+      comp += group.circle.map( circle => {
+        component = indent( indent_number ) + `<circle `
+        if ( circle.fill ) component += `fill={\`${ circle.fill }\`} `
+        if ( circle.opacity ) component += `style={{opacity:${ circle.opacity }}} `
+        component += `cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" />`
+        return component
+      } ).join(`\n`) + `\n`
+    if ( group.path.length > 0 )
+      comp += group.path.map( path => {
+        component = indent( indent_number ) + `<path `
+        if ( path.fill ) component += `fill={\`${ path.fill }\`} `
+        if ( path.opacity && path.isolation ) component += `style={{opacity:${path.opacity}, isolation:\`${path.isolation}\`}} `
+        else if ( path[`fill-opacity`] ) component += `style={{opacity:${ path[`fill-opacity`] }}} `
+        component += `d="${path.d}" />`
+        return component
+      } ).join(`\n`) + `\n`
+    if ( group.g.length > 0 )
+      comp += writeComponents( group.g, indent_number )
+    comp += `</g>\n`
+  } )
+  return comp
+}
+
 fs.readFile( file_name, (err, data) => { 
   if (err) throw err; 
   parseString( data, ( error, result ) => {
+    const indent_number = 0
     const { defs, g } = result.svg
     const classes = parseClasses( defs[0].style[0] )
     const parsed_components = parsePaths( classes, g, react_components )
-    // console.log( parsed_components[0].g[0].path )
+    console.log( writeComponents( parsed_components, indent_number ) )
   } )
 } )
 
