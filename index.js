@@ -3,12 +3,9 @@
 const fs = require('fs')
 var parseString = require('xml2js').parseString
 
-const file_name = `/Users/tnorlund/CloudFrontAnalytics-01.svg`
+const file_name = `/Users/tnorlund/API_APIGateway.svg`
 const style_re = /([\.a-z\-0-9,]+)\{([a-z0-9\.;:\-\(\)#]+)\}/gm
 const style_exp = new RegExp( style_re )
-
-let react_components = []
-let react_index
 
 /**
  * Parses the classes from the style element set by Illustrator.
@@ -46,111 +43,99 @@ const parseClasses = ( style ) => {
   return classes
 }
 
-const parsePaths = ( classes, g, react_components ) => {
+/**
+ * Adds
+ * @param {Object} style The parsed class's style
+ * @returns The React-link implementation of the component's style
+ */
+const applyStyle = ( style ) => {
+  if ( typeof style == undefined ) return ``
+  let return_style = ``
+  if ( style.fill ) return_style += `fill={\`${ style.fill }\`} `
+  if ( style.stroke ) return_style += `stroke={\`${ style.stroke }\`} `
+  if ( style[`stroke-linejoin`] ) return_style += `strokeLinejoin={\`${ style[`stroke-linejoin`] }\`} `
+  if ( style[`stroke-width`] ) return_style += `strokeWidth={\`${ style[`stroke-width`] }\`} `
+  if ( style.opacity && style.isolation ) return_style += `style={{opacity:${style.opacity}, isolation:\`${style.isolation}\`}} `
+  else if ( style[`fill-opacity`] ) return_style += `style={{opacity:${ style[`fill-opacity`] }}} `
+  return return_style
+}
+
+const parsePaths = ( classes, g, indent_number, output ) => {
   /**
    * Iterate over the different groups
    */
   g.forEach( group => {
+    output += indent( indent_number ) + `<g `
+    if ( group[`$`].id ) output += `id="${ group[`$`].id }" `
+    output += `/>\n`
+    indent_number += 1
     /**
-     * Append this group to the end of the react components
+     * Iterate over the child nodes inside of the group.
      */
-    react_components.push(
-      { 
-        ...classes[ group[`$`].class.split(`-`)[1] ],
-        path: [],
-        circle: [],
-        g: []
+    group[`$$`].forEach( node => {
+      let component
+      let style
+      /** 
+       * Attempt to apply the component's style. Set it to undefined if there 
+       * is none. 
+       */
+      if ( node[`$`].class ) style = classes[ node[`$`].class.split(`-`)[1] ]
+      else undefined
+
+      switch( node[`#name`] ) {
+        case `line`:
+          component =  indent( indent_number ) + `<line ${ applyStyle( style ) }x1="${ node[`$`].x1 }" y1="${ node[`$`].y1 }" x2="${ node[`$`].x2 }" y2="${ node[`$`].y2 }" />\n`
+          break
+        case `polygon`:
+          component =  indent( indent_number ) + `<polygon ${ applyStyle( style ) }points="${ node[`$`].points }" />\n`
+          break
+        case `rect`:
+          /** <rect /> components don't need all values. */
+          component =  indent( indent_number ) + `<rect ${ applyStyle( style ) }`
+          if ( node[`$`].x ) component += `x="${ node[`$`].x }" `
+          if ( node[`$`].y ) component += `x="${ node[`$`].y }" `
+          if ( node[`$`].width ) component += `width="${ node[`$`].width }" `
+          if ( node[`$`].height ) component += `height="${ node[`$`].height }" `
+          component += `/>\n`
+          break
+        case `path`:
+          component =  indent( indent_number ) + `<path ${ applyStyle( style ) }d="${ node[`$`].d }" />\n`
+          break
+        case `circle`:
+          component =  indent( indent_number ) + `<circle ${ applyStyle( style ) }cx="${ node[`$`].cx }" cy="${ node[`$`].cy }" r="${ node[`$`].r }" />\n`
+          break
+        case `ellipse`:
+          component =  indent( indent_number ) + `<ellipse ${ applyStyle( style ) }cx="${ node[`$`].cx }" cy="${ node[`$`].cy }" rx="${ node[`$`].rx }" ry="${ node[`$`].ry }" />\n`
+          break
+        case `polyline`:
+          component =  indent( indent_number ) + `<polyline ${ applyStyle( style ) }points="${ node[`$`].points }" />\n`
+          break
+        case `g`:
+          component = parsePaths( classes, [ node ], indent_number, `` )
+          break
+        default: 
+          console.log( `don't know how to process`, node[`#name`] )
       }
-    )
-    
-    /**
-     * Add all the paths to this group
-     */
-    if ( group.path ) {
-      group.path.forEach( path => {
-        react_components[ react_components.length - 1 ].path.push(
-          {
-            ...classes[ path[`$`].class.split(`-`)[1] ],
-            d: path[`$`].d
-          }
-        )
-      } )
-    }
-
-    /**
-     * Add all the circles to this group
-     */
-     if ( group.circle ) {
-      group.circle.forEach( circle => {
-        react_components[ react_components.length - 1 ].circle.push(
-          {
-            ...classes[ circle[`$`].class.split(`-`)[1] ],
-            cx: circle[`$`].cx, cy: circle[`$`].cy, r: circle[`$`].r,
-          }
-        )
-      } )
-    }
-
-    /**
-     * Recursively call this function when a group is in this group
-     */
-    if ( group.g ) {
-      react_components[ react_components.length - 1 ].g = parsePaths(
-        classes, 
-        group.g,
-        react_components[ react_components.length - 1 ].g
-      )
-    }
+      output += component
+    } )
+    indent_number -= 1
+    output +=  indent( indent_number ) + `</g>\n`
   } )
-  return react_components
+  return output
 }
 
 const indent = ( indent_number ) => `  `.repeat( indent_number )
 
-const writeComponents = ( components, indent_number ) => {
-  let comp = ``
-  let component
-  indent_number += 1
-  components.forEach( group => {
-    // console.log( {group} )
-    comp += `<g `
-    /**
-     * Add the clip path if there is one for this group.
-     */
-    if ( `clip-path` in group )
-      comp += `clipPath={\`${ group['clip-path'] }\`} >\n`
-    if (group.circle.length > 0)
-      comp += group.circle.map( circle => {
-        component = indent( indent_number ) + `<circle `
-        if ( circle.fill ) component += `fill={\`${ circle.fill }\`} `
-        if ( circle.opacity ) component += `style={{opacity:${ circle.opacity }}} `
-        component += `cx="${circle.cx}" cy="${circle.cy}" r="${circle.r}" />`
-        return component
-      } ).join(`\n`) + `\n`
-    if ( group.path.length > 0 )
-      comp += group.path.map( path => {
-        component = indent( indent_number ) + `<path `
-        if ( path.fill ) component += `fill={\`${ path.fill }\`} `
-        if ( path.opacity && path.isolation ) component += `style={{opacity:${path.opacity}, isolation:\`${path.isolation}\`}} `
-        else if ( path[`fill-opacity`] ) component += `style={{opacity:${ path[`fill-opacity`] }}} `
-        component += `d="${path.d}" />`
-        return component
-      } ).join(`\n`) + `\n`
-    if ( group.g.length > 0 )
-      comp += writeComponents( group.g, indent_number )
-    comp += `</g>\n`
-  } )
-  return comp
-}
-
 fs.readFile( file_name, (err, data) => { 
   if (err) throw err; 
-  parseString( data, ( error, result ) => {
+  parseString( data, { explicitChildren: true, preserveChildrenOrder: true }, ( error, result ) => {
     const indent_number = 0
+    let output = ``
     const { defs, g } = result.svg
+    console.log( defs[0][`$$`] )
     const classes = parseClasses( defs[0].style[0] )
-    const parsed_components = parsePaths( classes, g, react_components )
-    console.log( writeComponents( parsed_components, indent_number ) )
+    const parsed_output = parsePaths( classes, g, indent_number, output )
+    // console.log( parsed_output )
   } )
 } )
 
