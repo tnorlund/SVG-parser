@@ -7,12 +7,48 @@ const file_name = `/Users/tnorlund/API_APIGateway.svg`
 const style_re = /([\.a-z\-0-9,]+)\{([a-z0-9\.;:\-\(\)#]+)\}/gm
 const style_exp = new RegExp( style_re )
 
+const project = `API`
+
 /**
  * Parses the classes from the style element set by Illustrator.
- * @param {string} style The style element set by Illustrator.
+ * @param {string} defs The style element set by Illustrator.
  * @returns The parsed style as an object.
  */
-const parseClasses = ( style ) => {
+const parseClasses = ( defs ) => {
+  let style = defs[0].style[0]
+  let count = 1
+  
+  const clip_paths = defs[0].clipPath.map( path => {
+    if ( path.polygon ) {
+      if ( /clip-path-\d+/.test( path[`$`].id ) ) {
+        count += 1
+        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `$clip-path:url(#${ project }clip-path-${ count });` )
+        return `<clipPath id="${ project }clip-path-${ count }"><polygon points="${ path.polygon[0][`$`].points }" /></clipPath>`
+      } else {
+        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `clip-path:url(#${ project }clip-path-1);` )
+        return `<clipPath id="${ project }clip-path-1"><polygon points="${ path.polygon[0][`$`].points }" /></clipPath>`
+      }
+    }
+    if ( path.circle ) {
+      if ( /clip-path-\d+/.test( path[`$`].id ) ) {
+        count += 1
+        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `$clip-path:url(#${ project }clip-path-${ count });` )
+        return `<clipPath id="${ project }clip-path-${ count }"><circle cx="${ path.circle[0][`$`].cx }" cy="${ path.circle[0][`$`].cy }" r="${ path.circle[0][`$`].r }" /></clipPath>`
+      } else {
+        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `clip-path:url(#${ project }clip-path-1);` )
+        return `<clipPath id="${ project }clip-path-1"><circle cx="${ path.circle[0][`$`].cx }" cy="${ path.circle[0][`$`].cy }" r="${ path.circle[0][`$`].r }" /></clipPath>`
+      }
+    }
+    else console.log( path )
+  } ).join(`\n`)
+  
+  console.log( clip_paths )
+  // let linearGradients = []
+  // console.log( defs[0].linearGradient.map( gradient => {
+  //   console.log( { gradient } )
+  //   return gradient
+  // } ) )
+
   let match
   let classes = {}
   let class_number
@@ -126,17 +162,18 @@ const parsePaths = ( classes, g, indent_number, output ) => {
 
 const indent = ( indent_number ) => `  `.repeat( indent_number )
 
+const parseDefs = ( defs, classes ) => {
+  console.log( defs )
+}
+
 fs.readFile( file_name, (err, data) => { 
   if (err) throw err; 
   parseString( data, { explicitChildren: true, preserveChildrenOrder: true }, ( error, result ) => {
     const indent_number = 0
     let output = ``
     const { defs, g } = result.svg
-    console.log( defs[0][`$$`] )
-    const classes = parseClasses( defs[0].style[0] )
+    const classes = parseClasses( /** defs[0][`$$`] */ defs )
     const parsed_output = parsePaths( classes, g, indent_number, output )
     // console.log( parsed_output )
   } )
 } )
-
-console.log(`HERE!`)
