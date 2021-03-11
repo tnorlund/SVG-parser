@@ -4,10 +4,18 @@ const fs = require('fs')
 var parseString = require('xml2js').parseString
 
 const file_name = `/Users/tnorlund/API_APIGateway.svg`
-const style_re = /([\.a-z\-0-9,]+)\{([a-z0-9\.;:\-\(\)#]+)\}/gm
+const style_re = /([\.a-z\-0-9,]+)\{([A-Za-z0-9\.;:\-\(\)#]+)\}/gm
 const style_exp = new RegExp( style_re )
 
 const project = `API`
+
+/** Returns a properly formatted gradient stop. */
+const gradientStop = ( gradient ) => {
+  return gradient.stop.map( stop => {
+    if ( stop[`$`][`stop-opacity`] ) return `<stop offset="${ stop[`$`].offset }" stopColor="${ stop[`$`][`stop-color`] }" stopOpacity="${ stop[`$`][`stop-opacity`] }"/>`
+    return `<stop offset="${ stop[`$`].offset }" stopColor="${ stop[`$`][`stop-color`] }" />`
+  } ).join( `` )
+}
 
 /**
  * Parses the classes from the style element set by Illustrator.
@@ -22,32 +30,76 @@ const parseClasses = ( defs ) => {
     if ( path.polygon ) {
       if ( /clip-path-\d+/.test( path[`$`].id ) ) {
         count += 1
-        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `$clip-path:url(#${ project }clip-path-${ count });` )
-        return `<clipPath id="${ project }clip-path-${ count }"><polygon points="${ path.polygon[0][`$`].points }" /></clipPath>`
+        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `clip-path:url(#${ project }clip-path-${ count });` )
+        return `${ indent( 1 ) }<clipPath id="${ project }clip-path-${ count }"><polygon points="${ path.polygon[0][`$`].points }" /></clipPath>`
       } else {
         style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `clip-path:url(#${ project }clip-path-1);` )
-        return `<clipPath id="${ project }clip-path-1"><polygon points="${ path.polygon[0][`$`].points }" /></clipPath>`
+        return `${ indent( 1 ) }<clipPath id="${ project }clip-path-1"><polygon points="${ path.polygon[0][`$`].points }" /></clipPath>`
       }
     }
     if ( path.circle ) {
       if ( /clip-path-\d+/.test( path[`$`].id ) ) {
         count += 1
-        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `$clip-path:url(#${ project }clip-path-${ count });` )
-        return `<clipPath id="${ project }clip-path-${ count }"><circle cx="${ path.circle[0][`$`].cx }" cy="${ path.circle[0][`$`].cy }" r="${ path.circle[0][`$`].r }" /></clipPath>`
+        style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `clip-path:url(#${ project }clip-path-${ count });` )
+        return `${ indent( 1 ) }<clipPath id="${ project }clip-path-${ count }"><circle cx="${ path.circle[0][`$`].cx }" cy="${ path.circle[0][`$`].cy }" r="${ path.circle[0][`$`].r }" /></clipPath>`
       } else {
         style = style.replaceAll( `clip-path:url(#${path[`$`].id});`, `clip-path:url(#${ project }clip-path-1);` )
-        return `<clipPath id="${ project }clip-path-1"><circle cx="${ path.circle[0][`$`].cx }" cy="${ path.circle[0][`$`].cy }" r="${ path.circle[0][`$`].r }" /></clipPath>`
+        return `${ indent( 1 ) }<clipPath id="${ project }clip-path-1"><circle cx="${ path.circle[0][`$`].cx }" cy="${ path.circle[0][`$`].cy }" r="${ path.circle[0][`$`].r }" /></clipPath>`
       }
     }
-    else console.log( path )
   } ).join(`\n`)
+  count = 1
   
-  console.log( clip_paths )
-  // let linearGradients = []
-  // console.log( defs[0].linearGradient.map( gradient => {
-  //   console.log( { gradient } )
-  //   return gradient
-  // } ) )
+  /** Use an object to store the linear gradient stops.  */
+  let temp_linearGradients = {}
+  const linearGradients = defs[0].linearGradient.map( gradient => {
+    if ( /linear-gradient-\d+/.test( gradient[`$`].id ) ) {
+      if ( gradient.stop ) temp_linearGradients[ gradient[`$`].id ] = gradient.stop
+      else {
+        gradient.stop = temp_linearGradients[ gradient[`$`][`xlink:href`].split( `#` )[1] ]
+        temp_linearGradients[ gradient[`$`].id ] = gradient.stop
+      }
+      count += 1
+      style = style.replaceAll( `url(#${ gradient[`$`].id });`, `url(#${ project }linear-gradient-${ count });` )
+      /** Apply a gradient transform if present. */
+      if ( gradient.gradientTransform ) {
+        return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-${ count }" x1="${ gradient[`$`].x1 }" y1="${ gradient[`$`].y1 }" x2="${ gradient[`$`].x2 }" y2="${ gradient[`$`].y2 }" gradientTransform="${ gradient[`$`].gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( gradient) }</linearGradient>`
+      }
+      return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-${ count }" x1="${ gradient[`$`].x1 }" y1="${ gradient[`$`].y1 }" x2="${ gradient[`$`].x2 }" y2="${ gradient[`$`].y2 }" gradientUnits="userSpaceOnUse">${ gradientStop( gradient) }</linearGradient>`
+    } else {
+      temp_linearGradients[ gradient[`$`].id ] = gradient.stop
+      style = style.replaceAll( `url(#${ gradient[`$`].id });`, `url(#${ project }linear-gradient-1);` )
+      if ( gradient.gradientTransform )
+        return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-1" x1="${ gradient[`$`].x1 }" y1="${ gradient[`$`].y1 }" x2="${ gradient[`$`].x2 }" y2="${ gradient[`$`].y2 }" gradientTransform="${ gradient[`$`].gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop(gradient) }</linearGradient>`
+      return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-1" x1="${ gradient[`$`].x1 }" y1="${ gradient[`$`].y1 }" x2="${ gradient[`$`].x2 }" y2="${ gradient[`$`].y2 }" gradientUnits="userSpaceOnUse">${ gradientStop(gradient) }</linearGradient>`
+    }
+  } ).join( `\n` )
+  count = 1
+
+
+  let temp_radialGradient = {}
+  const radialGradients = defs[0].radialGradient.map( gradient => {
+    if ( /radial-gradient-\d+/.test( gradient[`$`].id ) ) {
+      if ( gradient.stop ) temp_radialGradient[ gradient[`$`].id ] = gradient.stop
+      else {
+        gradient.stop = temp_radialGradient[ gradient[`$`][`xlink:href`].split( `#` )[1] ]
+        temp_radialGradient[ gradient[`$`].id ] = gradient.stop
+      }
+      count += 1
+      style = style.replaceAll( `url(#${ gradient[`$`].id });`, `url(#${ project }radial-gradient-${ count });` )
+      /** Apply a gradient transform if present. */
+      if ( gradient.gradientTransform ) {
+        return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-${ count }" cx="${ gradient[`$`].cx }" cy="${ gradient[`$`].cy }" r="${ gradient[`$`].r }" gradientTransform="${ gradient[`$`].gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( gradient) }</radialGradient>`
+      }
+      return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-${ count }" cx="${ gradient[`$`].cx }" cy="${ gradient[`$`].cy }" r="${ gradient[`$`].r }" gradientUnits="userSpaceOnUse">${ gradientStop( gradient) }</radialGradient>`
+    } else {
+      temp_radialGradient[ gradient[`$`].id ] = gradient.stop
+      style = style.replaceAll( `url(#${ gradient[`$`].id });`, `url(#${ project }radial-gradient-1);` )
+      if ( gradient.gradientTransform )
+        return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-1" cx="${ gradient[`$`].cx }" cy="${ gradient[`$`].cy }" r="${ gradient[`$`].r }" gradientTransform="${ gradient[`$`].gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop(gradient) }</radialGradient>`
+      return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-1" cx="${ gradient[`$`].cx }" cy="${ gradient[`$`].cy }" r="${ gradient[`$`].r }" gradientUnits="userSpaceOnUse">${ gradientStop(gradient) }</radialGradient>`
+    }
+  } ).join( `\n` )
 
   let match
   let classes = {}
@@ -76,7 +128,10 @@ const parseClasses = ( defs ) => {
       } )
     } )
   } 
-  return classes
+  return { 
+    classes, 
+    output_def: `<defs>${[ clip_paths, linearGradients, radialGradients ].join( `\n` ) }</defs>` 
+  }
 }
 
 /**
@@ -85,7 +140,7 @@ const parseClasses = ( defs ) => {
  * @returns The React-link implementation of the component's style
  */
 const applyStyle = ( style ) => {
-  if ( typeof style == undefined ) return ``
+  if ( typeof style == `undefined` ) return ``
   let return_style = ``
   if ( style.fill ) return_style += `fill={\`${ style.fill }\`} `
   if ( style.stroke ) return_style += `stroke={\`${ style.stroke }\`} `
@@ -93,24 +148,28 @@ const applyStyle = ( style ) => {
   if ( style[`stroke-width`] ) return_style += `strokeWidth={\`${ style[`stroke-width`] }\`} `
   if ( style.opacity && style.isolation ) return_style += `style={{opacity:${style.opacity}, isolation:\`${style.isolation}\`}} `
   else if ( style[`fill-opacity`] ) return_style += `style={{opacity:${ style[`fill-opacity`] }}} `
+  if ( style[`clip-path`] ) return_style += `clipPath={\`${ style[`clip-path`] }\`} `
+  if ( style.opacity ) return_style += `style={{opacity:${ style.opacity }}} `
   return return_style
 }
 
 const parsePaths = ( classes, g, indent_number, output ) => {
+  let style
   /**
    * Iterate over the different groups
    */
   g.forEach( group => {
     output += indent( indent_number ) + `<g `
     if ( group[`$`].id ) output += `id="${ group[`$`].id }" `
-    output += `/>\n`
+    if ( group.$.class ) style = classes[ group.$.class.split(`-`)[1] ]
+    else style = undefined
+    output += `${ applyStyle( style ) } >\n`
     indent_number += 1
     /**
      * Iterate over the child nodes inside of the group.
      */
     group[`$$`].forEach( node => {
       let component
-      let style
       /** 
        * Attempt to apply the component's style. Set it to undefined if there 
        * is none. 
@@ -129,7 +188,7 @@ const parsePaths = ( classes, g, indent_number, output ) => {
           /** <rect /> components don't need all values. */
           component =  indent( indent_number ) + `<rect ${ applyStyle( style ) }`
           if ( node[`$`].x ) component += `x="${ node[`$`].x }" `
-          if ( node[`$`].y ) component += `x="${ node[`$`].y }" `
+          if ( node[`$`].y ) component += `y="${ node[`$`].y }" `
           if ( node[`$`].width ) component += `width="${ node[`$`].width }" `
           if ( node[`$`].height ) component += `height="${ node[`$`].height }" `
           component += `/>\n`
@@ -160,11 +219,8 @@ const parsePaths = ( classes, g, indent_number, output ) => {
   return output
 }
 
+/** Gives a certain number of spaces based on the number given. */
 const indent = ( indent_number ) => `  `.repeat( indent_number )
-
-const parseDefs = ( defs, classes ) => {
-  console.log( defs )
-}
 
 fs.readFile( file_name, (err, data) => { 
   if (err) throw err; 
@@ -172,8 +228,12 @@ fs.readFile( file_name, (err, data) => {
     const indent_number = 0
     let output = ``
     const { defs, g } = result.svg
-    const classes = parseClasses( /** defs[0][`$$`] */ defs )
+    const { classes, output_def } = parseClasses( defs )
     const parsed_output = parsePaths( classes, g, indent_number, output )
-    // console.log( parsed_output )
+    console.log(
+       `<svg viewBox="${result.svg.$.viewBox}">\n${
+        output_def + parsed_output 
+      }\n</svg>`
+    )
   } )
 } )
