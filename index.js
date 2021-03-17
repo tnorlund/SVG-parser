@@ -23,18 +23,15 @@ const gradientStop = ( gradient ) => {
  * @returns The parsed style as an object.
  */
 const parseClasses = ( defs ) => {
-  // console.log( defs )
   /** Store the style in a separate variable so that it can be modified. */
   let style = defs[0].style[0]
 
   let count = {
-    clippath: 0, lineargradient: 0, radialgradient: 0
+    clippath: 1, lineargradient: 1, radialgradient: 1
   }
   let temp_linearGradients = {}
   let temp_radialGradients = {}
-  // console.log( defs[0].$$ )
   const comps = defs[0].$$.map( def => {
-    // console.log( def )
     switch( def[ `#name` ] ) {
       case `radialGradient`: {
         if ( def.stop ) temp_radialGradients[ def.$.id ] = def.stop
@@ -44,17 +41,17 @@ const parseClasses = ( defs ) => {
         }
           if ( /radial-gradient-\d+/.test( def.$.id ) ) {
             count.radialgradient += 1
-            style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }radial-gradient-${ count.radialgradient });` )
+            style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }-radial-gradient-${ count.radialgradient });` )
             /** Apply a gradient transform if present. */
-            if ( def.gradientTransform ) {
-              return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-${ count.radialgradient }" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
+            if ( def.$.gradientTransform  ) {
+              return `${ indent( 1 ) }<radialGradient id="${ project }-radial-gradient-${ count.radialgradient }" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
             }
-            return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-${ count.radialgradient }" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
+            return `${ indent( 1 ) }<radialGradient id="${ project }-radial-gradient-${ count.radialgradient }" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
           } else {
-            style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }radial-gradient-1);` )
-            if ( def.gradientTransform )
-              return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-1" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
-            return `${ indent( 1 ) }<radialGradient id="${ project }radial-gradient-1" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
+            style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }-radial-gradient-1);` )
+            if ( def.$.gradientTransform  )
+              return `${ indent( 1 ) }<radialGradient id="${ project }-radial-gradient-1" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
+            return `${ indent( 1 ) }<radialGradient id="${ project }-radial-gradient-1" cx="${ def.$.cx }" cy="${ def.$.cy }" r="${ def.$.r }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</radialGradient>\n`
           }
         break
       }
@@ -68,41 +65,39 @@ const parseClasses = ( defs ) => {
         }
         if ( /linear-gradient-\d+/.test( def.$.id ) ) {
           count.lineargradient += 1
-          style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }linear-gradient-${ count.lineargradient });` )
+          style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }-linear-gradient-${ count.lineargradient });` )
           /** Apply a gradient transform if present. */
-          if ( def.gradientTransform ) {
-            return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-${ count.lineargradient }" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
+          if ( def.$.gradientTransform  ) {
+            return `${ indent( 1 ) }<linearGradient id="${ project }-linear-gradient-${ count.lineargradient }" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
           }
-          return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-${ count.lineargradient }" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
+          return `${ indent( 1 ) }<linearGradient id="${ project }-linear-gradient-${ count.lineargradient }" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
         } else {
-          style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }linear-gradient-1);` )
-          if ( def.gradientTransform )
-            return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-1" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
-          return `${ indent( 1 ) }<linearGradient id="${ project }linear-gradient-1" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
+          style = style.replaceAll( `url(#${ def.$.id });`, `url(#${ project }-linear-gradient-1);` )
+          if ( def.$.gradientTransform  )
+            return `${ indent( 1 ) }<linearGradient id="${ project }-linear-gradient-1" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientTransform="${ def.$.gradientTransform }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
+          return `${ indent( 1 ) }<linearGradient id="${ project }-linear-gradient-1" x1="${ def.$.x1 }" y1="${ def.$.y1 }" x2="${ def.$.x2 }" y2="${ def.$.y2 }" gradientUnits="userSpaceOnUse">${ gradientStop( def ) }</linearGradient>\n`
         }
         break
       }
       case `clipPath`: {
         if ( def.polygon ) {
           if ( /clip-path-\d+/.test( def.$.id ) ) {
-            style = style.replaceAll( `clip-path:url(#${ def.$.id });`, `clip-path:url(#${ project }clip-path-${ count.clippath });` )
             count.clippath += 1
-            return `${ indent( 1 ) }<clipPath id="${ project }clip-path-${ count.clippath }"><polygon points="${ def.polygon[0].$.points }" /></clipPath>\n`
+            style = style.replaceAll( `clip-path:url(#${ def.$.id });`, `clip-path:url(#${ project }-clip-path-${ count.clippath });` )
+            return `${ indent( 1 ) }<clipPath id="${ project }-clip-path-${ count.clippath }"><polygon points="${ def.polygon[0].$.points }" /></clipPath>\n`
           } else {
-            style = style.replaceAll( `clip-path:url(#${def.$.id});`, `clip-path:url(#${ project }clip-path-1);` )
-            count.clippath += 1
-            return `${ indent( 1 ) }<clipPath id="${ project }clip-path-1"><polygon points="${ def.polygon[0].$.points }" /></clipPath>\n`
+            style = style.replaceAll( `clip-path:url(#${def.$.id});`, `clip-path:url(#${ project }-clip-path-1);` )
+            return `${ indent( 1 ) }<clipPath id="${ project }-clip-path-1"><polygon points="${ def.polygon[0].$.points }" /></clipPath>\n`
           }
         }
         if ( def.circle ) {
           if ( /clip-path-\d+/.test( def.$.id ) ) {
-            style = style.replaceAll( `clip-path:url(#${ def.$.id });`, `clip-path:url(#${ project }clip-path-${ count.clippath });` )
             count.clippath += 1
-            return `${ indent( 1 ) }<clipPath id="${ project }clip-path-${ count.clippath }"><circle cx="${ def.circle[0].$.cx }" cy="${ def.circle[0].$.cy }" r="${ def.circle[0].$.r }" /></clipPath>\n`
+            style = style.replaceAll( `clip-path:url(#${ def.$.id });`, `clip-path:url(#${ project }-clip-path-${ count.clippath });` )
+            return `${ indent( 1 ) }<clipPath id="${ project }-clip-path-${ count.clippath }"><circle cx="${ def.circle[0].$.cx }" cy="${ def.circle[0].$.cy }" r="${ def.circle[0].$.r }" /></clipPath>\n`
           } else {
-            style = style.replaceAll( `clip-path:url(#${ def.$.id });`, `clip-path:url(#${ project }clip-path-1);` )
-            count.clippath += 1
-            return `${ indent( 1 ) }<clipPath id="${ project }clip-path-1"><circle cx="${ def.circle[0].$.cx }" cy="${ def.circle[0].$.cy }" r="${ def.circle[0].$.r }" /></clipPath>\n`
+            style = style.replaceAll( `clip-path:url(#${ def.$.id });`, `clip-path:url(#${ project }-clip-path-1);` )
+            return `${ indent( 1 ) }<clipPath id="${ project }-clip-path-1"><circle cx="${ def.circle[0].$.cx }" cy="${ def.circle[0].$.cy }" r="${ def.circle[0].$.r }" /></clipPath>\n`
           }
         }
         else throw new Error( `Could not parse clipPath ${ def }`)
@@ -222,7 +217,7 @@ const parsePaths = ( classes, g, indent_number, output ) => {
           component = parsePaths( classes, [ node ], indent_number, `` )
           break
         default: 
-          console.log( `don't know how to process`, node[`#name`] )
+          throw new Error( `Cannot parse type, ${ node[`#name`] }`)
       }
       output += component
     } )
